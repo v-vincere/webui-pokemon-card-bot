@@ -1,0 +1,90 @@
+/* General Body Styles */
+body {
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Sidebar Styles */
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    min-height: 100vh;
+    transition: all 0.3s;
+}
+
+#sidebar .sidebar-header {
+    border-bottom: 1px solid #dee2e6;
+}
+
+#sidebar ul.components a {
+    padding: 10px;
+    font-size: 1.1em;
+    display: block;
+    color: #333;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+#sidebar ul.components a:hover {
+    background-color: #e9ecef;
+}
+
+#sidebar ul.components li.active > a, a[aria-expanded="true"] {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* Main Content Styles */
+#content {
+    width: 100%;
+}
+
+/* Card Image Styles */
+.card-img-top {
+    width: 50px;
+    height: auto;
+    border-radius: 5px;
+}
+
+/* Image Tooltip */
+#image-tooltip {
+    max-width: 250px;
+    border: 2px solid #0d6efd;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Dark Mode Styles */
+[data-bs-theme="dark"] {
+    background-color: #212529;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] #sidebar {
+    background-color: #343a40 !important;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] #sidebar .sidebar-header {
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] #sidebar ul.components a {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] #sidebar ul.components a:hover {
+    background-color: #495057;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .table {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-accent-bg: var(--bs-table-striped-bg);
+    color: var(--bs-table-striped-color);
+}

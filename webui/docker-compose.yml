@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:80"
+    volumes:
+      - /home/ubuntu/pokemon-card-bot/data:/app/data
+    environment:
+      - DATABASE_URL=/app/data/pokemon_cards.db
+      - CARD_DATA_PATH=/app/data/pokemon_tcg_pocket_cards.csv
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ../data/card_images:/usr/share/nginx/html/card-images:ro
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: pokemon-card-network
