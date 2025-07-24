@@ -11,10 +11,11 @@ services:
 
   frontend:
     build: ./frontend
+    user: "root"
     ports:
       - "8080:80"
     volumes:
-      - ../data/card_images:/usr/share/nginx/html/card-images:ro
+      - /home/ubuntu/pokemon-card-bot/data/card_images:/usr/share/nginx/html/card-images:ro
     depends_on:
       - backend
 

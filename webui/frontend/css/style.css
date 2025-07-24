@@ -88,3 +88,54 @@ body {
     --bs-table-accent-bg: var(--bs-table-striped-bg);
     color: var(--bs-table-striped-color);
 }
+/* Summary Stats Customization */
+#summary-stats .card {
+    margin-bottom: 1rem;
+}
+
+/* Ensure chart is responsive within its container */
+#rarity-chart {
+    max-height: 300px; /* Adjust as needed */
+}
+/* Sortable Table Header */
+.sortable {
+    cursor: pointer;
+    position: relative;
+}
+
+.sortable:hover {
+    background-color: #f1f1f1;
+}
+
+[data-bs-theme="dark"] .sortable:hover {
+    background-color: #495057;
+}
+
+.sortable .bi {
+    float: right;
+    margin-left: 5px;
+    color: #ccc;
+}
+
+.sortable.asc .bi-arrow-down-up, .sortable.desc .bi-arrow-down-up {
+    display: none;
+}
+
+.sortable .bi-arrow-up, .sortable .bi-arrow-down {
+    display: none;
+}
+
+.sortable.asc .bi-arrow-up {
+    display: inline-block;
+    color: #333;
+}
+
+.sortable.desc .bi-arrow-down {
+    display: inline-block;
+    color: #333;
+}
+
+[data-bs-theme="dark"] .sortable.asc .bi-arrow-up,
+[data-bs-theme="dark"] .sortable.desc .bi-arrow-down {
+    color: #dee2e6;
+}
