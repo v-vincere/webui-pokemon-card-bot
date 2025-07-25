@@ -1,8 +1,19 @@
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - frontend
+      - backend
+
   backend:
     build: ./backend
-    ports:
-      - "8000:80"
     volumes:
       - /home/ubuntu/pokemon-card-bot/data:/app/data
     environment:
@@ -12,12 +23,13 @@ services:
   frontend:
     build: ./frontend
     user: "root"
-    ports:
-      - "8080:80"
     volumes:
       - /home/ubuntu/pokemon-card-bot/data/card_images:/usr/share/nginx/html/card-images:ro
     depends_on:
       - backend
+
+volumes:
+  caddy_data:
 
 networks:
   default:

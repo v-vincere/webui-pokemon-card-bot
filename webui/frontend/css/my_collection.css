@@ -1,0 +1,51 @@
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+}
+
+@media (max-width: 768px) {
+    .card-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.card-grid .card:hover {
+    transform: scale(1.05);
+}
+
+.card img {
+    width: 100%;
+    display: block;
+}
+
+.card-count {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+#rarity-filter {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.filter-card .card-body {
+    padding: 1rem;
+}

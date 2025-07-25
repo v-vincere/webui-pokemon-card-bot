@@ -18,10 +18,10 @@
             </div>
             <ul class="list-unstyled components p-3">
                 <li class="active">
-                    <a href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                    <a href="index.html"><i class="bi bi-speedometer2"></i> Dashboard</a>
                 </li>
                 <li>
-                    <a href="#"><i class="bi bi-collection"></i> My Collection</a>
+                    <a href="my_collection.html"><i class="bi bi-collection"></i> My Collection</a>
                 </li>
                 <li>
                     <a href="#"><i class="bi bi-gear"></i> Settings</a>
@@ -33,7 +33,12 @@
         <div id="content" class="flex-grow-1 p-4">
             <!-- Header -->
             <header class="d-flex justify-content-between align-items-center mb-4">
-                <h1>Dashboard</h1>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-light d-lg-none me-2" type="button" id="sidebar-toggle">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <h1>Dashboard</h1>
+                </div>
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="darkModeToggle">
                     <label class="form-check-label" for="darkModeToggle"><i class="bi bi-moon-stars-fill"></i> Dark Mode</label>
@@ -43,19 +48,19 @@
             <!-- Top Row: Summary Stats and Rarity Chart -->
             <div class="row mb-4">
                 <!-- Summary Stats -->
-                <div class="col-lg-8">
+                <div class="col-lg-7">
                     <div class="row" id="summary-stats">
                         <!-- Stats will be loaded here -->
                     </div>
                 </div>
                 <!-- Rarity Distribution -->
-                <div class="col-lg-4">
+                <div class="col-lg-5">
                     <div class="card h-100">
                         <div class="card-header">
-                            Rarity Distribution
+                            Rarity Distribution (%)
                         </div>
                         <div class="card-body">
-                            <canvas id="rarity-chart"></canvas>
+                            <canvas id="rarity-pie-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -87,7 +92,7 @@
                                 <th>Image</th>
                                 <th data-sort="card_name" class="sortable">Card Name <i class="bi bi-arrow-down-up"></i></th>
                                 <th data-sort="rarity" class="sortable">Rarity <i class="bi bi-arrow-down-up"></i></th>
-                                <th data-sort="device_account" class="sortable">Device Account <i class="bi bi-arrow-down-up"></i></th>
+                                <th data-sort="deviceAccount" class="sortable">Device Account <i class="bi bi-arrow-down-up"></i></th>
                             </tr>
                         </thead>
                         <tbody id="cards-table-body">
@@ -105,6 +110,25 @@
                         </select>
                     </div>
                     <nav id="pagination-controls" aria-label="Page navigation"></nav>
+                </div>
+            </div>
+
+            <!-- Rarity by Account Table -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    Rarity by Account
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead id="rarity-by-account-table-head">
+                                <!-- Header will be dynamically generated -->
+                            </thead>
+                            <tbody id="rarity-by-account-table-body">
+                                <!-- Data will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

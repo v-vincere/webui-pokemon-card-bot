@@ -4,15 +4,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('search-input');
     const rarityFilterContainer = document.getElementById('rarity-filter');
     const tableBody = document.getElementById('cards-table-body');
-    const rarityChartCtx = document.getElementById('rarity-chart').getContext('2d');
+    const rarityPieChartCtx = document.getElementById('rarity-pie-chart').getContext('2d');
     const imageTooltip = document.getElementById('image-tooltip');
     const summaryStatsContainer = document.getElementById('summary-stats');
+    const rarityByAccountTableHead = document.getElementById('rarity-by-account-table-head');
+    const rarityByAccountTableBody = document.getElementById('rarity-by-account-table-body');
     const paginationControls = document.getElementById('pagination-controls');
     const rowsPerPageSelect = document.getElementById('rows-per-page');
     const tableHeader = document.querySelector('thead');
 
     // --- State Management ---
-    let rarityChart;
+    let rarityPieChart;
     let currentPage = 1;
     let limit = 100;
     let currentSort = {
@@ -57,10 +59,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const rarityData = await response.json();
             populateRarityFilter(rarityData);
-            renderRarityChart(rarityData);
+            renderRarityPieChart(rarityData);
             renderSummaryStats(rarityData);
         } catch (error) {
             console.error("Failed to fetch rarity counts:", error);
+        }
+    }
+
+    async function fetchRarityByAccount() {
+        try {
+            const response = await fetch('/api/rarity-by-account');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            renderRarityByAccountTable(data);
+        } catch (error) {
+            console.error("Failed to fetch rarity by account:", error);
         }
     }
 
@@ -77,24 +90,51 @@ document.addEventListener('DOMContentLoaded', function() {
             row.insertCell(1).textContent = card.card_name;
             row.insertCell(2).textContent = card.rarity;
             // Correctly access device_account
-            row.insertCell(3).textContent = card.device_account;
+            row.insertCell(3).textContent = card.deviceAccount;
         });
     }
 
-    function renderRarityChart(data) {
+    function renderRarityPieChart(data) {
         const labels = data.map(item => item.rarity);
         const counts = data.map(item => item.count);
-        if (rarityChart) rarityChart.destroy();
-        rarityChart = new Chart(rarityChartCtx, {
-            type: 'bar',
-            data: { labels, datasets: [{ label: 'Card Count', data: counts, backgroundColor: 'rgba(75, 192, 192, 0.7)', borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 1 }] },
+        if (rarityPieChart) rarityPieChart.destroy();
+
+        // Generate a color palette
+        const colors = labels.map((_, i) => `hsl(${(i * 360 / labels.length)}, 70%, 60%)`);
+
+        rarityPieChart = new Chart(rarityPieChartCtx, {
+            type: 'pie',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Rarity Distribution',
+                    data: counts,
+                    backgroundColor: colors,
+                    hoverOffset: 4
+                }]
+            },
             options: {
-                responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } },
-                onClick: (event, elements) => {
-                    if (elements.length > 0) {
-                        const rarity = labels[elements[0].index];
-                        document.querySelectorAll('#rarity-filter input').forEach(cb => cb.checked = cb.value === rarity);
-                        rarityFilterContainer.dispatchEvent(new Event('change'));
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(2);
+                                    label += `${context.raw} (${percentage}%)`;
+                                }
+                                return label;
+                            }
+                        }
                     }
                 }
             }
@@ -106,8 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalCards = rarityData.reduce((sum, item) => sum + item.count, 0);
         const createStatCard = (title, count) => {
             let statDiv = document.createElement('div');
-            statDiv.className = 'col-md-4 col-lg-3 mb-3';
-            statDiv.innerHTML = `<div class="card text-center h-100"><div class="card-body"><h6 class="card-title text-muted">${title}</h6><p class="card-text fs-5">${count}</p></div></div>`;
+            statDiv.className = 'col-6 col-md-4 col-lg-3 mb-3'; // Adjusted for smaller size
+            statDiv.innerHTML = `<div class="card text-center h-100"><div class="card-body p-2"><h6 class="card-title text-muted mb-1" style="font-size: 0.8rem;">${title}</h6><p class="card-text fs-6 mb-0">${count}</p></div></div>`;
             return statDiv;
         };
         summaryStatsContainer.appendChild(createStatCard('Total Cards', totalCards));
@@ -115,14 +155,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function populateRarityFilter(data) {
+        const sortOrder = [
+            'Crown', 'Three Star', 'Two Star', 'One Star',
+            'Two Shiny', 'One Shiny',
+            'Four Diamond', 'Three Diamond', 'Two Diamond', 'One Diamond'
+        ];
+
+        data.sort((a, b) => {
+            const indexA = sortOrder.indexOf(a.rarity);
+            const indexB = sortOrder.indexOf(b.rarity);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+
         rarityFilterContainer.innerHTML = '';
         data.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'form-check form-check-inline';
+            const rarityClass = item.rarity.toLowerCase().replace(/\s+/g, '-');
+            div.className = `form-check form-switch rarity-toggle-${rarityClass}`;
             const rarityId = item.rarity.replace(/\s+/g, '');
             div.innerHTML = `<input class="form-check-input" type="checkbox" value="${item.rarity}" id="rarity-${rarityId}"><label class="form-check-label" for="rarity-${rarityId}">${item.rarity}</label>`;
             rarityFilterContainer.appendChild(div);
         });
+    }
+
+    function renderRarityByAccountTable(data) {
+        if (Object.keys(data).length === 0) {
+            rarityByAccountTableHead.innerHTML = '<tr><th>No data available</th></tr>';
+            rarityByAccountTableBody.innerHTML = '';
+            return;
+        }
+
+        // Collect all unique rarities for the header
+        const allRarities = new Set();
+        Object.values(data).forEach(rarities => {
+            Object.keys(rarities).forEach(r => allRarities.add(r));
+        });
+        const sortedRarities = Array.from(allRarities).sort();
+
+        // Create header
+        let headerHtml = '<tr><th>Device Account</th>';
+        sortedRarities.forEach(rarity => {
+            headerHtml += `<th>${rarity}</th>`;
+        });
+        headerHtml += '</tr>';
+        rarityByAccountTableHead.innerHTML = headerHtml;
+
+        // Create body
+        let bodyHtml = '';
+        for (const account in data) {
+            bodyHtml += `<tr><td>${account}</td>`;
+            sortedRarities.forEach(rarity => {
+                bodyHtml += `<td>${data[account][rarity] || 0}</td>`;
+            });
+            bodyHtml += '</tr>';
+        }
+        rarityByAccountTableBody.innerHTML = bodyHtml;
     }
 
     function renderPagination({ total_pages, page: localCurrentPage }) {
@@ -233,8 +322,18 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchRarityCounts().then(() => {
             fetchCards();
         });
+        fetchRarityByAccount();
         updateSortUI();
     }
 
     initializeDashboard();
 });
+    // --- Sidebar Toggle ---
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
+    }

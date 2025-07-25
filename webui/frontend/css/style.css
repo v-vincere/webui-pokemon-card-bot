@@ -94,8 +94,26 @@ body {
 }
 
 /* Ensure chart is responsive within its container */
-#rarity-chart {
-    max-height: 300px; /* Adjust as needed */
+#rarity-pie-chart {
+    max-height: 350px; /* Adjust as needed for pie chart */
+}
+
+#summary-stats .card-body {
+    padding: 0.75rem;
+}
+
+#summary-stats .card-title {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+#summary-stats .card-text {
+    font-size: 1.25rem;
+}
+
+.table-responsive {
+    max-height: 400px; /* Or any height you prefer */
+    overflow-y: auto;
 }
 /* Sortable Table Header */
 .sortable {
@@ -139,3 +157,48 @@ body {
 [data-bs-theme="dark"] .sortable.desc .bi-arrow-down {
     color: #dee2e6;
 }
+/* Collapsible Sidebar Styles */
+@media (max-width: 991.98px) {
+    #sidebar {
+        margin-left: -250px;
+    }
+    #sidebar.active {
+        margin-left: 0;
+    }
+    #content {
+        width: 100%;
+    }
+}
+
+#sidebar-toggle {
+    margin-right: 1rem;
+}
+#rarity-filter {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.card.mb-4 .card-body {
+    padding: 1rem;
+}
+.rarity-toggle-crown { grid-area: 1 / 1; }
+.rarity-toggle-three-star { grid-area: 1 / 2; }
+.rarity-toggle-two-star { grid-area: 1 / 3; }
+.rarity-toggle-one-star { grid-area: 1 / 4; }
+.rarity-toggle-two-shiny { grid-area: 2 / 1; }
+.rarity-toggle-one-shiny { grid-area: 2 / 2; }
+.rarity-toggle-four-diamond { grid-area: 3 / 1; }
+.rarity-toggle-three-diamond { grid-area: 3 / 2; }
+.rarity-toggle-two-diamond { grid-area: 3 / 3; }
+.rarity-toggle-one-diamond { grid-area: 3 / 4; }
+.rarity-toggle-crown { grid-area: 1 / 1; }
+.rarity-toggle-three-star { grid-area: 1 / 2; }
+.rarity-toggle-two-star { grid-area: 1 / 3; }
+.rarity-toggle-one-star { grid-area: 1 / 4; }
+.rarity-toggle-two-shiny { grid-area: 2 / 1; }
+.rarity-toggle-one-shiny { grid-area: 2 / 2; }
+.rarity-toggle-four-diamond { grid-area: 3 / 1; }
+.rarity-toggle-three-diamond { grid-area: 3 / 2; }
+.rarity-toggle-two-diamond { grid-area: 3 / 3; }
+.rarity-toggle-one-diamond { grid-area: 3 / 4; }
