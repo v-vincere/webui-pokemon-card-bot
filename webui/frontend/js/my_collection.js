@@ -89,6 +89,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return Array.from(rarityFilter.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
     }
 
+    function getRarityIcon(rarity) {
+        const iconMappings = {
+            'Crown': '<span class="rarity-icon-set"><img src="/icons/crown.png" class="rarity-icon"></span>',
+            'Three Star': '<span class="rarity-icon-set"><img src="/icons/star.png" class="rarity-icon"><img src="/icons/star.png" class="rarity-icon"><img src="/icons/star.png" class="rarity-icon"></span>',
+            'Two Star': '<span class="rarity-icon-set"><img src="/icons/star.png" class="rarity-icon"><img src="/icons/star.png" class="rarity-icon"></span>',
+            'One Star': '<span class="rarity-icon-set"><img src="/icons/star.png" class="rarity-icon"></span>',
+            'Two Shiny': '<span class="rarity-icon-set"><img src="/icons/two_shiny.png" class="rarity-icon"></span>',
+            'One Shiny': '<span class="rarity-icon-set"><img src="/icons/one_shiny.png" class="rarity-icon"></span>',
+            'Four Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"></span>',
+            'Three Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"></span>',
+            'Two Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"></span>',
+            'One Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"></span>'
+        };
+        return iconMappings[rarity] || rarity;
+    }
+
     async function populateRarityFilters() {
         try {
             const response = await fetch('/api/rarity-counts');
@@ -110,10 +126,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             rarityFilter.innerHTML = rarities.map(r => {
                 const rarityClass = r.rarity.toLowerCase().replace(/\s+/g, '-');
+                const rarityId = r.rarity.replace(/\s+/g, '');
                 return `
                 <div class="form-check form-switch rarity-toggle-${rarityClass}">
-                    <input class="form-check-input" type="checkbox" id="rarity-${r.rarity}" value="${r.rarity}">
-                    <label class="form-check-label" for="rarity-${r.rarity}">${r.rarity} (${r.count})</label>
+                    <input class="form-check-input" type="checkbox" id="rarity-${rarityId}" value="${r.rarity}">
+                    <label class="form-check-label" for="rarity-${rarityId}">${getRarityIcon(r.rarity)}</label>
                 </div>
             `}).join('');
 
@@ -134,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial load
+    groupDuplicatesCheckbox.checked = true;
     setupDarkMode();
     populateRarityFilters();
     fetchCards();

@@ -1,66 +1,70 @@
-# Project Plan
+# Project Plan: WebUI Pokemon Card Bot
 
-This document outlines the plan for fixing and improving the Pokémon card collection web UI.
+This document outlines the plan for the WebUI Pokemon Card Bot project. It will be updated as the project progresses.
 
-## Tasks
+## 2025-07-25: Shrink Dashboard Summary Cards
 
-### 1. Fix Collection Page UI Issues
--   **Issue:** The filter bar on the collection page enlarges on hover.
--   **Status:** **Completed**
--   **Plan:** Investigated `my_collection.css` to find and fix the CSS rule causing this behavior. The issue was that the filter bar had the `card` class, and the hover effect was applied to all elements with that class. I made the selector more specific to only target cards within the `card-grid`.
+- Updated `webui/frontend/js/dashboard.js` to change the Bootstrap grid classes for the summary stat cards, allowing more cards to fit in a row. Removed inline styles to centralize styling.
+- Updated `webui/frontend/css/style.css` to reduce the padding and font sizes for the summary stat cards, making them smaller.
 
--   **Issue:** The "Group Duplicates" button is not working.
--   **Status:** **Investigated**
--   **Plan:** Debug the JavaScript in `my_collection.js` to fix the event handler and associated logic. The code appears to be correct, with an event listener that triggers a new API call. The backend also appears to handle the `group` parameter correctly. If the issue persists, further debugging will be needed by inspecting the network requests in the browser's developer tools.
+## 2025-07-25: Refactor My Collection Rarity Filters
 
--   **Issue:** Rarity filters break search functionality.
--   **Status:** **Completed**
--   **Plan:** The `hasMore` flag was being incorrectly set to `false` when a filter returned a small number of results, preventing further fetches. The logic in `fetchCards` was updated to ignore the `hasMore` flag when a filter is changed.
+- Updated `webui/frontend/js/my_collection.js` to simplify the rarity filter HTML generation, removing the counts and fixing invalid HTML in the `id` attributes. This makes the "My Collection" page filters visually consistent with the "Dashboard" page.
 
-### 2. UI/UX Improvements
--   **Issue:** Checkboxes are inconsistent with the dark mode toggle's style.
--   **Status:** **Completed**
--   **Plan:** Replace all standard checkboxes with a toggle switch component similar to the dark mode toggle. This was achieved by adding the `form-switch` class to the relevant checkboxes in `my_collection.html` and `my_collection.js`.
+## 2025-07-25: Display rarity icons in table
 
--   **Issue:** Rarity toggles are not neatly arranged.
--   **Status:** **Completed**
--   **Plan:** Added flexbox styling to `my_collection.css` to align the rarity toggles in a neat, wrapping layout.
+## 2025-07-25: Fix Vertical Icon Stacking in Filters
 
--   **Issue:** Checkboxes on the dashboard page are not toggles.
--   **Status:** **Completed**
--   **Plan:** Updated `dashboard.js` to add the `form-switch` class to the dynamically generated rarity filters.
+- Wrapped rarity icon sets in a `<span>` with the class `rarity-icon-set` in both `dashboard.js` and `my_collection.js`.
+- Added a CSS rule to `style.css` to apply `display: inline-flex` to the `rarity-icon-set` class, ensuring that icons for a single rarity are always displayed horizontally.
 
--   **Issue:** Sidebar is not collapsible.
--   **Status:** **Completed**
--   **Plan:** Added a hamburger menu button to both `index.html` and `my_collection.html`. Added CSS to `style.css` to handle the collapsing and expanding, and added JavaScript to both `dashboard.js` and `my_collection.js` to toggle the sidebar's visibility.
+- Updated `webui/frontend/js/dashboard.js` to display rarity icons instead of text in the "All Cards" table.
+- Updated `webui/frontend/js/dashboard.js` to display rarity icons in the chart legend.
+- Added a custom legend to `webui/frontend/index.html` and styled it in `webui/frontend/css/style.css`.
 
--   **Issue:** Rarity toggles are not ordered correctly and have too much whitespace.
--   **Status:** **Completed**
--   **Plan:** Updated the JavaScript for both the collection and dashboard pages to sort the rarities in a specific order. Updated the CSS to display the toggles in a single column and reduce the padding around the filter container.
+## 2025-07-25: Replace rarity text with icons
+- Updated `webui/frontend/css/my_collection.css` to apply consistent styling to the rarity filter.
 
--   **Issue:** Hamburger menu is not visible.
--   **Status:** **Completed**
--   **Plan:** Fixed the HTML structure in the header of both pages to correctly display the hamburger menu on smaller screens.
+- Updated `webui/frontend/js/dashboard.js` to replace rarity text with icons.
+- Added versioning to CSS links in `index.html` and `my_collection.html` to prevent browser caching issues.
+- Updated `webui/frontend/js/my_collection.js` to replace rarity text with icons.
+- **2025-07-25: Docker Volume Mounts for Static Assets**
+- **2025-07-25: Development Environment Fix**
+- Modified `webui/docker-compose.yml` to mount the local `frontend` directory as a volume. This ensures that code changes are reflected immediately without needing to rebuild the Docker image, which was the root cause of the styling inconsistencies.
+- When adding new static assets, ensure that they are mounted as volumes in the `docker-compose.yml` file for the `frontend` service.
+- The `nginx.conf` file must also be updated to serve the new assets.
+- The containers must be rebuilt after making these changes.
+## 2025-07-25: Make the website responsive
 
--   **Issue:** Rarity toggles are not in the correct grid layout.
--   **Status:** **Completed**
--   **Plan:** Updated the CSS to use a grid layout for the rarity filters. Updated the JavaScript to add classes to the toggles so they can be positioned correctly in the grid. This has been applied to both the dashboard and collection pages.
+The website is not responsive and does not display correctly on mobile devices. The following changes have been made to address this issue:
 
--   **Issue:** Collection view shows a limited number of cards per row.
--   **Status:** **Completed**
--   **Plan:** Updated `my_collection.css` to display 10 cards per row on desktop and 5 on mobile for a more compact view.
-
-## Design Choices & Gotchas
--   The dark mode toggle will be used as the reference for the new toggle switch design.
--   Care must be taken to ensure that replacing the checkboxes does not break any existing functionality.
--   The "Group Duplicates" issue may require browser-based debugging to resolve, as the code itself seems correct.
-
-### 3. Deployment
--   **Objective:** Deploy the application to be accessible at `poke.vince.gg` with a free SSL certificate.
--   **Status:** **Completed**
--   **Plan:**
-    -   A Caddy reverse proxy has been added to the `docker-compose.yml`.
-    -   Caddy is configured via a `Caddyfile` to handle HTTPS for the `poke.vince.gg` subdomain.
-    -   The DNS "A" record for `poke.vince.gg` needs to be pointed to the server's IP address.
-    -   The subpath approach (`vince.gg/poke`) was attempted but proved to be too complex and unreliable. A subdomain is the standard and recommended approach.
--   **Resolution:** The `NXDOMAIN` error was resolved by correctly pointing the DNS "A" record for `poke.vince.gg` to the server's IP address. After the DNS change propagated, restarting the Caddy container allowed it to successfully obtain an SSL certificate from Let's Encrypt.
+- Modified `webui/frontend/css/style.css` to make the filter and table components responsive.
+- Adjusted the grid layout for the rarity filter at different screen sizes.
+- Ensured the table content wraps properly.
+- Removed duplicated CSS rules.
+- Modified `webui/frontend/css/my_collection.css` to make the card grid responsive.
+- Used a flexible grid layout that adapts to different screen sizes.
+- Removed duplicated rarity filter styles.
+- **2025-07-25: Second Fix for Rarity Filter (Failed)**
+- Adjusted the `minmax` value in the grid template for the rarity filter to be smaller.
+- Added styles to allow labels to wrap, preventing overflow on smaller screens. This resulted in poor visual wrapping.
+- **2025-07-25: Third Fix for Rarity Filter**
+- Replaced the `grid` layout with a `flexbox` layout for the rarity filter.
+- This allows the filter options to wrap naturally without causing awkward text breaks.
+- **2025-07-25: Regression Fix for My Collection Page**
+- Adjusted the `grid-template-columns` for the card grid to ensure it displays three columns on mobile devices.
+- **2025-07-25: Fix for Rarity by Account Table**
+- Made the "Rarity by Account" table horizontally scrollable on mobile devices.
+- Removed a faulty CSS rule that was overriding Bootstrap's responsive table styles.
+- Added a new CSS rule to prevent table headers from wrapping.
+- **2025-07-25: Font Size Adjustment**
+- Reduced the font size in the main table to prevent text from wrapping on mobile devices.
+- **2025-07-25: Rarity by Account Pagination**
+- Added pagination to the "Rarity by Account" table.
+- Updated the backend to support pagination for the `/api/rarity-by-account` endpoint.
+- Updated the frontend to include pagination controls and handle the paginated data.
+- Further reduced the font size of the "All Cards" table to prevent wrapping.
+- **2025-07-25: JavaScript Bug Fix**
+- Fixed a JavaScript error in `dashboard.js` that was causing a crash when rendering the pagination for the "All Cards" table.
+- **2025-07-25: Reverted Pagination Logic**
+- Reverted the pagination logic in `dashboard.js` to a working state to fix the crash.

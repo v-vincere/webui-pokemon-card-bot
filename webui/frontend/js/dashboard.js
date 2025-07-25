@@ -6,17 +6,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const tableBody = document.getElementById('cards-table-body');
     const rarityPieChartCtx = document.getElementById('rarity-pie-chart').getContext('2d');
     const imageTooltip = document.getElementById('image-tooltip');
+    const rarityPieChartLegend = document.getElementById('rarity-pie-chart-legend');
     const summaryStatsContainer = document.getElementById('summary-stats');
     const rarityByAccountTableHead = document.getElementById('rarity-by-account-table-head');
     const rarityByAccountTableBody = document.getElementById('rarity-by-account-table-body');
     const paginationControls = document.getElementById('pagination-controls');
     const rowsPerPageSelect = document.getElementById('rows-per-page');
+    const rarityRowsPerPageSelect = document.getElementById('rarity-rows-per-page');
+    const rarityPaginationControls = document.getElementById('rarity-pagination-controls');
     const tableHeader = document.querySelector('thead');
 
     // --- State Management ---
     let rarityPieChart;
     let currentPage = 1;
     let limit = 100;
+    let rarityCurrentPage = 1;
+    let rarityLimit = 20;
     let currentSort = {
         by: 'timestamp',
         order: 'desc'
@@ -49,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error("Detailed error fetching cards:", error);
             tableBody.innerHTML = `<tr><td colspan="4" class="text-center">Error loading data. See browser console for details.</td></tr>`;
-            paginationControls.innerHTML = '';
+            if (paginationControls) paginationControls.innerHTML = '';
         }
     }
 
@@ -68,10 +73,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchRarityByAccount() {
         try {
-            const response = await fetch('/api/rarity-by-account');
+            const url = `/api/rarity-by-account?page=${rarityCurrentPage}&limit=${rarityLimit}`;
+            const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            renderRarityByAccountTable(data);
+            renderRarityByAccountTable(data.data);
+            renderRarityPagination(data);
         } catch (error) {
             console.error("Failed to fetch rarity by account:", error);
         }
@@ -88,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
             let row = tableBody.insertRow();
             row.insertCell(0).innerHTML = card.image_url ? `<img src="${card.image_url}" alt="${card.card_name}" class="card-img-top" style="width: 50px;">` : 'N/A';
             row.insertCell(1).textContent = card.card_name;
-            row.insertCell(2).textContent = card.rarity;
+            row.insertCell(2).innerHTML = getRarityIcon(card.rarity);
             // Correctly access device_account
             row.insertCell(3).textContent = card.deviceAccount;
         });
@@ -118,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'top',
+                        display: false // Disable default legend
                     },
                     tooltip: {
                         callbacks: {
@@ -139,6 +146,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        generateCustomLegend(labels, colors);
+    }
+
+    function generateCustomLegend(labels, colors) {
+        rarityPieChartLegend.innerHTML = '';
+        labels.forEach((label, index) => {
+            const legendItem = document.createElement('div');
+            legendItem.classList.add('chart-legend-item');
+            legendItem.innerHTML = `
+                <span class="chart-legend-color" style="background-color: ${colors[index]}"></span>
+                ${getRarityIcon(label)}
+            `;
+            rarityPieChartLegend.appendChild(legendItem);
+        });
+    }
+
+    function getRarityIcon(rarity) {
+        const iconMappings = {
+            'Crown': '<span class="rarity-icon-set"><img src="/icons/crown.png" class="rarity-icon"></span>',
+            'Three Star': '<span class="rarity-icon-set"><img src="/icons/star.png" class="rarity-icon"><img src="/icons/star.png" class="rarity-icon"><img src="/icons/star.png" class="rarity-icon"></span>',
+            'Two Star': '<span class="rarity-icon-set"><img src="/icons/star.png" class="rarity-icon"><img src="/icons/star.png" class="rarity-icon"></span>',
+            'One Star': '<span class="rarity-icon-set"><img src="/icons/star.png" class="rarity-icon"></span>',
+            'Two Shiny': '<span class="rarity-icon-set"><img src="/icons/two_shiny.png" class="rarity-icon"></span>',
+            'One Shiny': '<span class="rarity-icon-set"><img src="/icons/one_shiny.png" class="rarity-icon"></span>',
+            'Four Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"></span>',
+            'Three Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"></span>',
+            'Two Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"><img src="/icons/one_diamond.png" class="rarity-icon"></span>',
+            'One Diamond': '<span class="rarity-icon-set"><img src="/icons/one_diamond.png" class="rarity-icon"></span>'
+        };
+        return iconMappings[rarity] || rarity;
     }
 
     function renderSummaryStats(rarityData) {
@@ -146,8 +183,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalCards = rarityData.reduce((sum, item) => sum + item.count, 0);
         const createStatCard = (title, count) => {
             let statDiv = document.createElement('div');
-            statDiv.className = 'col-6 col-md-4 col-lg-3 mb-3'; // Adjusted for smaller size
-            statDiv.innerHTML = `<div class="card text-center h-100"><div class="card-body p-2"><h6 class="card-title text-muted mb-1" style="font-size: 0.8rem;">${title}</h6><p class="card-text fs-6 mb-0">${count}</p></div></div>`;
+            statDiv.className = 'col-4 col-md-3 col-lg-2 mb-3';
+            statDiv.innerHTML = `
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">${getRarityIcon(title)}</h6>
+                        <p class="card-text">${count}</p>
+                    </div>
+                </div>`;
             return statDiv;
         };
         summaryStatsContainer.appendChild(createStatCard('Total Cards', totalCards));
@@ -175,13 +218,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const rarityClass = item.rarity.toLowerCase().replace(/\s+/g, '-');
             div.className = `form-check form-switch rarity-toggle-${rarityClass}`;
             const rarityId = item.rarity.replace(/\s+/g, '');
-            div.innerHTML = `<input class="form-check-input" type="checkbox" value="${item.rarity}" id="rarity-${rarityId}"><label class="form-check-label" for="rarity-${rarityId}">${item.rarity}</label>`;
+            div.innerHTML = `<input class="form-check-input" type="checkbox" value="${item.rarity}" id="rarity-${rarityId}"><label class="form-check-label" for="rarity-${rarityId}">${getRarityIcon(item.rarity)}</label>`;
             rarityFilterContainer.appendChild(div);
         });
     }
 
     function renderRarityByAccountTable(data) {
-        if (Object.keys(data).length === 0) {
+        const tableData = data;
+        if (Object.keys(tableData).length === 0) {
             rarityByAccountTableHead.innerHTML = '<tr><th>No data available</th></tr>';
             rarityByAccountTableBody.innerHTML = '';
             return;
@@ -189,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Collect all unique rarities for the header
         const allRarities = new Set();
-        Object.values(data).forEach(rarities => {
+        Object.values(tableData).forEach(rarities => {
             Object.keys(rarities).forEach(r => allRarities.add(r));
         });
         const sortedRarities = Array.from(allRarities).sort();
@@ -197,24 +241,25 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create header
         let headerHtml = '<tr><th>Device Account</th>';
         sortedRarities.forEach(rarity => {
-            headerHtml += `<th>${rarity}</th>`;
+            headerHtml += `<th>${getRarityIcon(rarity)}</th>`;
         });
         headerHtml += '</tr>';
         rarityByAccountTableHead.innerHTML = headerHtml;
 
         // Create body
         let bodyHtml = '';
-        for (const account in data) {
+        for (const account in tableData) {
             bodyHtml += `<tr><td>${account}</td>`;
             sortedRarities.forEach(rarity => {
-                bodyHtml += `<td>${data[account][rarity] || 0}</td>`;
+                bodyHtml += `<td>${tableData[account][rarity] || 0}</td>`;
             });
             bodyHtml += '</tr>';
         }
         rarityByAccountTableBody.innerHTML = bodyHtml;
     }
 
-    function renderPagination({ total_pages, page: localCurrentPage }) {
+    function renderPagination(data) {
+        const { total_pages, page: localCurrentPage } = data;
         paginationControls.innerHTML = '';
         if (total_pages <= 1) return;
         const ul = document.createElement('ul');
@@ -238,6 +283,31 @@ document.addEventListener('DOMContentLoaded', function() {
         paginationControls.appendChild(ul);
     }
 
+    function renderRarityPagination(data) {
+        const { total_pages, page: localCurrentPage } = data;
+        rarityPaginationControls.innerHTML = '';
+        if (total_pages <= 1) return;
+        const ul = document.createElement('ul');
+        ul.className = 'pagination';
+        const createPageItem = (page, text = page, disabled = false, active = false) => {
+            const li = document.createElement('li');
+            li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" data-rarity-page="${page}">${text}</a>`;
+            return li;
+        };
+        ul.appendChild(createPageItem(localCurrentPage - 1, 'Previous', localCurrentPage === 1));
+        
+        for (let i = 1; i <= total_pages; i++) {
+            if (i === localCurrentPage || i === 1 || i === total_pages || (i >= localCurrentPage - 2 && i <= localCurrentPage + 2)) {
+                 ul.appendChild(createPageItem(i, i, false, i === localCurrentPage));
+            } else if (i === localCurrentPage - 3 || i === localCurrentPage + 3) {
+                ul.appendChild(createPageItem(0, '...', true));
+            }
+        }
+        ul.appendChild(createPageItem(localCurrentPage + 1, 'Next', localCurrentPage === total_pages));
+        rarityPaginationControls.appendChild(ul);
+    }
+
     function getSelectedRarities() {
         return Array.from(document.querySelectorAll('#rarity-filter input:checked')).map(cb => cb.value).join(',');
     }
@@ -258,7 +328,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     searchInput.addEventListener('input', debouncedFetch);
     rarityFilterContainer.addEventListener('change', debouncedFetch);
-    if (rowsPerPageSelect) rowsPerPageSelect.addEventListener('change', debouncedFetch);
+    if (rowsPerPageSelect) {
+        rowsPerPageSelect.addEventListener('change', () => {
+            limit = parseInt(rowsPerPageSelect.value, 10);
+            debouncedFetch();
+        });
+    }
+
+    if (rarityRowsPerPageSelect) {
+        rarityRowsPerPageSelect.addEventListener('change', () => {
+            rarityLimit = parseInt(rarityRowsPerPageSelect.value, 10);
+            rarityCurrentPage = 1;
+            fetchRarityByAccount();
+        });
+    }
 
     tableHeader.addEventListener('click', e => {
         const header = e.target.closest('.sortable');
@@ -299,6 +382,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isNaN(page) && page > 0) {
                 currentPage = page;
                 fetchCards();
+            }
+        }
+    });
+
+    rarityPaginationControls.addEventListener('click', e => {
+        e.preventDefault();
+        const pageLink = e.target.closest('[data-rarity-page]');
+        if (pageLink) {
+            const page = parseInt(pageLink.dataset.rarityPage, 10);
+            if (!isNaN(page) && page > 0) {
+                rarityCurrentPage = page;
+                fetchRarityByAccount();
             }
         }
     });

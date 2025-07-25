@@ -1,13 +1,13 @@
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 1rem;
     padding: 1rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 400px) {
     .card-grid {
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
@@ -40,12 +40,22 @@
     font-weight: bold;
 }
 
-#rarity-filter {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-}
-
 .filter-card .card-body {
     padding: 1rem;
+}
+.rarity-icon {
+    height: 1em;
+    width: auto;
+    vertical-align: middle;
+}
+
+#rarity-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+#rarity-filter .form-check {
+    flex-shrink: 0;
 }

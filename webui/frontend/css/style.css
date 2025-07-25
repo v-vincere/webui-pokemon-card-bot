@@ -99,22 +99,29 @@ body {
 }
 
 #summary-stats .card-body {
-    padding: 0.75rem;
+    padding: 0.5rem;
 }
 
 #summary-stats .card-title {
-    font-size: 0.85rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.1rem;
 }
 
 #summary-stats .card-text {
-    font-size: 1.25rem;
+    font-size: 1rem;
 }
 
-.table-responsive {
-    max-height: 400px; /* Or any height you prefer */
-    overflow-y: auto;
+
+.table td, .table th {
+    word-break: break-word;
+    vertical-align: middle;
+    font-size: 0.8rem; /* Smaller font for table content */
 }
+
+#rarity-by-account-table-head th {
+    white-space: nowrap;
+}
+
 /* Sortable Table Header */
 .sortable {
     cursor: pointer;
@@ -174,31 +181,54 @@ body {
     margin-right: 1rem;
 }
 #rarity-filter {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+#rarity-filter .form-check {
+    flex-shrink: 0;
 }
 
 .card.mb-4 .card-body {
     padding: 1rem;
 }
-.rarity-toggle-crown { grid-area: 1 / 1; }
-.rarity-toggle-three-star { grid-area: 1 / 2; }
-.rarity-toggle-two-star { grid-area: 1 / 3; }
-.rarity-toggle-one-star { grid-area: 1 / 4; }
-.rarity-toggle-two-shiny { grid-area: 2 / 1; }
-.rarity-toggle-one-shiny { grid-area: 2 / 2; }
-.rarity-toggle-four-diamond { grid-area: 3 / 1; }
-.rarity-toggle-three-diamond { grid-area: 3 / 2; }
-.rarity-toggle-two-diamond { grid-area: 3 / 3; }
-.rarity-toggle-one-diamond { grid-area: 3 / 4; }
-.rarity-toggle-crown { grid-area: 1 / 1; }
-.rarity-toggle-three-star { grid-area: 1 / 2; }
-.rarity-toggle-two-star { grid-area: 1 / 3; }
-.rarity-toggle-one-star { grid-area: 1 / 4; }
-.rarity-toggle-two-shiny { grid-area: 2 / 1; }
-.rarity-toggle-one-shiny { grid-area: 2 / 2; }
-.rarity-toggle-four-diamond { grid-area: 3 / 1; }
-.rarity-toggle-three-diamond { grid-area: 3 / 2; }
-.rarity-toggle-two-diamond { grid-area: 3 / 3; }
-.rarity-toggle-one-diamond { grid-area: 3 / 4; }
+@media (max-width: 767.98px) {
+    .table-responsive .table th:nth-child(4),
+    .table-responsive .table td:nth-child(4) {
+        display: none;
+    }
+}
+.rarity-icon {
+    height: 1em;
+    width: auto;
+    vertical-align: middle;
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.chart-legend-item {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+.chart-legend-color {
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    margin-right: 8px;
+    border-radius: 3px;
+}
+.rarity-icon-set {
+    display: inline-flex;
+    align-items: center;
+}

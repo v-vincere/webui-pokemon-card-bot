@@ -24,7 +24,9 @@ services:
     build: ./frontend
     user: "root"
     volumes:
+      - ./frontend:/usr/share/nginx/html
       - /home/ubuntu/pokemon-card-bot/data/card_images:/usr/share/nginx/html/card-images:ro
+      - /home/ubuntu/webui-pokemon-card-bot/data/icons:/usr/share/nginx/html/icons:ro
     depends_on:
       - backend
 

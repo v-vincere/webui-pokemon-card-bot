@@ -146,12 +146,33 @@ def get_rarity_counts(conn: sqlite3.Connection = Depends(get_db_connection)):
     return [dict(row) for row in rarity_counts]
 
 @app.get("/api/rarity-by-account")
-def get_rarity_by_account(conn: sqlite3.Connection = Depends(get_db_connection)):
+def get_rarity_by_account(
+    conn: sqlite3.Connection = Depends(get_db_connection),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100)
+):
     setup_known_cards_temp_table(conn)
     """
-    Provides a pivoted table of rarity counts per device account.
+    Provides a paginated, pivoted table of rarity counts per device account.
     """
-    query = """
+    # Step 1: Get a paginated list of unique device accounts
+    cursor = conn.cursor()
+    
+    count_query = "SELECT COUNT(DISTINCT deviceAccount) FROM identifications"
+    cursor.execute(count_query)
+    total_accounts = cursor.fetchone()[0]
+    
+    offset = (page - 1) * limit
+    accounts_query = "SELECT DISTINCT deviceAccount FROM identifications ORDER BY deviceAccount LIMIT ? OFFSET ?"
+    cursor.execute(accounts_query, (limit, offset))
+    paginated_accounts = [row[0] for row in cursor.fetchall()]
+
+    if not paginated_accounts:
+        return {"total_records": 0, "page": page, "limit": limit, "total_pages": 0, "data": {}}
+
+    # Step 2: Fetch rarity counts for only the paginated accounts
+    placeholders = ','.join('?' for _ in paginated_accounts)
+    query = f"""
         SELECT
             COALESCE(i.deviceAccount, 'N/A') as deviceAccount,
             i.rarity,
@@ -160,25 +181,44 @@ def get_rarity_by_account(conn: sqlite3.Connection = Depends(get_db_connection))
             identifications i
         JOIN known_cards k ON REPLACE(LOWER(TRIM(i.card_name)), '_', '-') = k.name AND LOWER(TRIM(i.rarity)) = k.rarity
         WHERE
-            i.rarity IS NOT NULL
+            i.rarity IS NOT NULL AND i.deviceAccount IN ({placeholders})
         GROUP BY
             i.deviceAccount, i.rarity
     """
     try:
-        df = pd.read_sql_query(query, conn)
+        df = pd.read_sql_query(query, conn, params=paginated_accounts)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query failed: {e}")
 
     if df.empty:
-        return {}
+        # This can happen if accounts have no cards with known rarities
+        empty_data = {acc: {} for acc in paginated_accounts}
+        return {
+            "total_records": total_accounts,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total_accounts + limit - 1) // limit,
+            "data": empty_data
+        }
 
     # Pivot the table
     pivot_df = df.pivot(index='deviceAccount', columns='rarity', values='count').fillna(0).astype(int)
     
+    # Ensure all paginated accounts are in the result, even if they had no cards
+    for acc in paginated_accounts:
+        if acc not in pivot_df.index:
+            pivot_df.loc[acc] = 0
+            
     # Convert to the desired JSON format
     result = pivot_df.to_dict(orient='index')
     
-    return result
+    return {
+        "total_records": total_accounts,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total_accounts + limit - 1) // limit,
+        "data": result
+    }
 
 @app.get("/api/my-collection")
 def get_my_collection(
