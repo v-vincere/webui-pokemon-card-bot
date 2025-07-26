@@ -343,8 +343,7 @@ def get_my_collection(
     rarity: str = Query(None),
     expansion: str = Query(None),
     trainer: bool = Query(False),
-    sort_name_asc: bool = Query(False),
-    sort_name_desc: bool = Query(False),
+    sort_name: str = Query("asc", description="Sort by name: 'asc' or 'desc'"),
     sort_rarity: bool = Query(False),
     sort_count: bool = Query(False)
 ):
@@ -380,41 +379,26 @@ def get_my_collection(
 
     # Build order clause based on multiple sorting options
     order_parts = []
-    
-    # Add name ascending sort
-    if sort_name_asc:
-        order_parts.append("i.card_name ASC")
-    
-    # Add name descending sort
-    if sort_name_desc:
-        order_parts.append("i.card_name DESC")
-        
-    # Add rarity sort with custom order
+
+    if sort_count and group:
+        order_parts.append("count DESC")
+
     if sort_rarity:
-        # Define the custom rarity order
         rarity_order = [
             'Crown', 'Three Star', 'Two Star', 'One Star',
             'Two Shiny', 'One Shiny',
             'Four Diamond', 'Three Diamond', 'Two Diamond', 'One Diamond'
         ]
-        # Create a CASE statement for custom ordering
-        case_parts = []
-        for i, rarity in enumerate(rarity_order):
-            case_parts.append(f"WHEN i.rarity = '{rarity}' THEN {i}")
+        case_parts = [f"WHEN i.rarity = '{r}' THEN {i}" for i, r in enumerate(rarity_order)]
         case_statement = "CASE " + " ".join(case_parts) + " END"
         order_parts.append(case_statement)
-        
-    # Add count sort (only when grouping)
-    if sort_count and group:
-        order_parts.append("count DESC")
-    
-    # Default sorting if no options selected
-    if not order_parts:
-        if group:
-            order_parts.append("i.card_name ASC, i.rarity")
-        else:
-            order_parts.append("i.timestamp DESC")
-    
+
+    # Always add name sort as a secondary sort
+    if sort_name == 'desc':
+        order_parts.append("i.card_name DESC")
+    else:
+        order_parts.append("i.card_name ASC")
+
     order_clause = "ORDER BY " + ", ".join(order_parts)
 
     if group:

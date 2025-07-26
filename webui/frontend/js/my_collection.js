@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortCountToggle = document.getElementById('sort-count-toggle');
 
     // Sorting state
-    let sortNameDirection = null; // null, 'asc', or 'desc'
+    let sortNameDirection = 'asc'; // 'asc', or 'desc'
     let sortRarityActive = false;
     let sortCountActive = false;
 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedExpansions = getSelectedExpansions();
             const showTrainers = trainerFilter.checked;
             const sortCountChecked = sortCountActive && group;
-            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}&sort_name_asc=${sortNameDirection === 'asc'}&sort_name_desc=${sortNameDirection === 'desc'}&sort_rarity=${sortRarityActive}&sort_count=${sortCountChecked}`);
+            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}&sort_name=${sortNameDirection}&sort_rarity=${sortRarityActive}&sort_count=${sortCountChecked}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -90,11 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners
     window.addEventListener('scroll', handleInfiniteScroll);
-    groupDuplicatesCheckbox.addEventListener('change', () => {
-        // Update sort options based on group duplicates setting
-        updateSortOptions();
-        fetchCards(true);
-    });
     searchBar.addEventListener('input', () => {
         // Debounce search input to avoid excessive API calls
         clearTimeout(searchBar.timer);
@@ -107,15 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add event listeners for sorting toggles
     if (sortNameToggle) {
         sortNameToggle.addEventListener('click', () => {
-            if (sortNameDirection === null) {
-                sortNameDirection = 'asc';
-                sortNameToggle.textContent = 'Name: A-Z';
-            } else if (sortNameDirection === 'asc') {
+            if (sortNameDirection === 'asc') {
                 sortNameDirection = 'desc';
                 sortNameToggle.textContent = 'Name: Z-A';
+                sortNameToggle.classList.add('active');
             } else {
-                sortNameDirection = null;
+                sortNameDirection = 'asc';
                 sortNameToggle.textContent = 'Name: A-Z';
+                sortNameToggle.classList.remove('active');
             }
             fetchCards(true);
         });
@@ -254,8 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSortCountOption();
     fetchCards();
 });
-    // --- Sidebar Toggle ---
-    const sidebarToggle = document.getElementById('sidebar-toggle');
+// --- Sidebar Toggle ---
+const sidebarToggle = document.getElementById('sidebar-toggle');
     const sidebar = document.getElementById('sidebar');
 
     if (sidebarToggle && sidebar) {
