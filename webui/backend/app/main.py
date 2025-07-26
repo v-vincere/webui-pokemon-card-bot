@@ -389,9 +389,20 @@ def get_my_collection(
     if sort_name_desc:
         order_parts.append("i.card_name DESC")
         
-    # Add rarity sort
+    # Add rarity sort with custom order
     if sort_rarity:
-        order_parts.append("i.rarity")
+        # Define the custom rarity order
+        rarity_order = [
+            'Crown', 'Three Star', 'Two Star', 'One Star',
+            'Two Shiny', 'One Shiny',
+            'Four Diamond', 'Three Diamond', 'Two Diamond', 'One Diamond'
+        ]
+        # Create a CASE statement for custom ordering
+        case_parts = []
+        for i, rarity in enumerate(rarity_order):
+            case_parts.append(f"WHEN i.rarity = '{rarity}' THEN {i}")
+        case_statement = "CASE " + " ".join(case_parts) + " END"
+        order_parts.append(case_statement)
         
     # Add count sort (only when grouping)
     if sort_count and group:

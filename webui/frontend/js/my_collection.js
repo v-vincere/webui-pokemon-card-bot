@@ -7,11 +7,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const expansionFilter = document.getElementById('expansion-filter');
     const trainerFilter = document.getElementById('trainer-filter');
     const darkModeToggle = document.getElementById('darkModeToggle');
-    // Sorting checkboxes
-    const sortNameAsc = document.getElementById('sort-name-asc');
-    const sortNameDesc = document.getElementById('sort-name-desc');
-    const sortRarity = document.getElementById('sort-rarity');
-    const sortCount = document.getElementById('sort-count');
+    // Sorting elements
+    const sortNameToggle = document.getElementById('sort-name-toggle');
+    const sortRarityToggle = document.getElementById('sort-rarity-toggle');
+    const sortCountToggle = document.getElementById('sort-count-toggle');
+
+    // Sorting state
+    let sortNameDirection = null; // null, 'asc', or 'desc'
+    let sortRarityActive = false;
+    let sortCountActive = false;
 
     let page = 1;
     const limit = 200;
@@ -35,11 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedRarities = getSelectedRarities();
             const selectedExpansions = getSelectedExpansions();
             const showTrainers = trainerFilter.checked;
-            const sortNameAscChecked = sortNameAsc ? sortNameAsc.checked : false;
-            const sortNameDescChecked = sortNameDesc ? sortNameDesc.checked : false;
-            const sortRarityChecked = sortRarity ? sortRarity.checked : false;
-            const sortCountChecked = sortCount ? sortCount.checked : false;
-            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}&sort_name_asc=${sortNameAscChecked}&sort_name_desc=${sortNameDescChecked}&sort_rarity=${sortRarityChecked}&sort_count=${sortCountChecked}`);
+            const sortCountChecked = sortCountActive && group;
+            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}&sort_name_asc=${sortNameDirection === 'asc'}&sort_name_desc=${sortNameDirection === 'desc'}&sort_rarity=${sortRarityActive}&sort_count=${sortCountChecked}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -103,18 +104,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     trainerFilter.addEventListener('change', () => fetchCards(true));
     
-    // Add event listeners for sorting checkboxes
-    if (sortNameAsc) sortNameAsc.addEventListener('change', () => fetchCards(true));
-    if (sortNameDesc) sortNameDesc.addEventListener('change', () => fetchCards(true));
-    if (sortRarity) sortRarity.addEventListener('change', () => fetchCards(true));
-    if (sortCount) sortCount.addEventListener('change', () => fetchCards(true));
+    // Add event listeners for sorting toggles
+    if (sortNameToggle) {
+        sortNameToggle.addEventListener('click', () => {
+            if (sortNameDirection === null) {
+                sortNameDirection = 'asc';
+                sortNameToggle.textContent = 'Name: A-Z';
+            } else if (sortNameDirection === 'asc') {
+                sortNameDirection = 'desc';
+                sortNameToggle.textContent = 'Name: Z-A';
+            } else {
+                sortNameDirection = null;
+                sortNameToggle.textContent = 'Name: A-Z';
+            }
+            fetchCards(true);
+        });
+    }
+
+    if (sortRarityToggle) {
+        sortRarityToggle.addEventListener('click', () => {
+            sortRarityActive = !sortRarityActive;
+            sortRarityToggle.classList.toggle('active');
+            fetchCards(true);
+        });
+    }
+
+    // Add event listener for count toggle
+    if (sortCountToggle) {
+        sortCountToggle.addEventListener('click', () => {
+            if (groupDuplicatesCheckbox.checked) {
+                sortCountActive = !sortCountActive;
+                sortCountToggle.classList.toggle('active');
+                fetchCards(true);
+            }
+        });
+    }
     
-    // Update sort count checkbox based on group duplicates setting
+    // Update sort count toggle based on group duplicates setting
     function updateSortCountOption() {
-        if (sortCount) {
-            sortCount.disabled = !groupDuplicatesCheckbox.checked;
+        if (sortCountToggle) {
+            sortCountToggle.disabled = !groupDuplicatesCheckbox.checked;
             if (!groupDuplicatesCheckbox.checked) {
-                sortCount.checked = false;
+                sortCountActive = false;
+                sortCountToggle.classList.remove('active');
             }
         }
     }

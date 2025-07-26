@@ -66,3 +66,19 @@
     gap: 1rem;
     align-items: center;
 }
+.controls-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toggles-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.sorting-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}

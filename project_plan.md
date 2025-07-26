@@ -234,3 +234,60 @@ The website is not responsive and does not display correctly on mobile devices. 
         - Implemented logic to enable/disable the count sorting option based on whether grouping duplicates is enabled.
         - Updated the API calls to include all selected sorting parameters.
         - The sorting options are now independent, allowing users to combine multiple sorting criteria.
+## 2025-07-26: Implement Toggle Sorting for Name and Custom Rarity Order
+
+- **Goal**: Convert the Name sorting checkboxes into a single toggle button that cycles through A-Z, Z-A, and off states. Implement a custom sorting order for the Rarity toggle that follows the sequence: crowns, 3 stars, 2 stars, 1 star, 2 shiny, 1 shiny, 4 diamond, 3 diamond, 2 diamond, 1 diamond.
+- **Implementation**:
+    - **Frontend (HTML)**: Modified `webui/frontend/my_collection.html` to replace the two Name sorting checkboxes and the Rarity checkbox with two toggle buttons (`#sort-name-toggle` and `#sort-rarity-toggle`).
+    - **Frontend (JavaScript)**: Updated `webui/frontend/js/my_collection.js` to:
+        - Replace references to the old sorting checkboxes with the new toggle buttons.
+        - Implement state management for the Name toggle (`sortNameDirection` with values `null`, `'asc'`, `'desc'`).
+        - Implement state management for the Rarity toggle (`sortRarityActive` boolean).
+        - Add click event listeners to handle the toggle logic and update the button text/UI accordingly.
+        - Update the API call to send the correct sorting parameters based on the toggle states.
+    - **Backend (Python)**: Modified the `/api/my-collection` endpoint in `webui/backend/app/main.py` to:
+        - Replace the simple `ORDER BY i.rarity` clause with a `CASE` statement that defines the custom sorting order for rarities.
+        - The `CASE` statement assigns a numerical value to each rarity type based on the desired order, ensuring the database returns results in the correct sequence when `sort_rarity` is true.
+- **Dependencies & Commands**:
+    - No new dependencies were added.
+    - The changes are self-contained within the existing codebase.
+    - No specific commands need to be run; the changes take effect on the next page load.
+## 2025-07-26: Update "By Count" Sorting to Use Toggle Button
+
+- **Goal**: Change the "By Count" sorting option from a checkbox to a toggle button to match the new style of the Name and Rarity sorting options.
+- **Implementation**:
+    - **Frontend (HTML)**: Modified `webui/frontend/my_collection.html` to replace the `#sort-count` checkbox with a toggle button (`#sort-count-toggle`).
+    - **Frontend (JavaScript)**: Updated `webui/frontend/js/my_collection.js` to:
+        - Replace the reference to the old checkbox with the new toggle button (`sortCountToggle`).
+        - Implement state management for the count toggle (`sortCountActive` boolean).
+        - Add a click event listener to handle the toggle logic and update the button's "active" class accordingly.
+        - Update the `updateSortCountOption` function to disable the button and remove its "active" state when grouping duplicates is disabled.
+        - Ensure the API call only sends `sort_count=true` when both `sortCountActive` is true and `groupDuplicatesCheckbox.checked` is true.
+## 2025-07-26: Move Sorting Options to the Right of "Show Only Trainers"
+
+- **Goal**: Improve UI layout by moving the sorting options to the right of the "Show Only Trainers" toggle switch to better utilize white space.
+- **Implementation**:
+    - **Frontend (HTML)**: Modified `webui/frontend/my_collection.html` to restructure the filter row. The sorting options (`<h6>Sorting Options</h6>` and the button container) were moved from their own row (`<div class="row g-3 align-items-center mt-2">`) into the same row as the "Group Duplicates" and "Show Only Trainers" toggles. This was achieved by:
+        - Removing the separate row for sorting options.
+        - Adding a new `<div class="col-12">` within the existing filter row to contain the sorting options.
+        - Placing this new column after the "Show Only Trainers" column.
+    - This change keeps all filter and sorting controls on the same horizontal line, creating a more compact and visually balanced layout.
+
+## 2025-07-26: Relocate Sorting Options for Improved UI
+
+- **Goal**: Move the sorting options to the right of the "Show Only Trainers" toggle to make better use of whitespace in the UI.
+- **Implementation**:
+    - **Frontend (HTML)**: In `webui/frontend/my_collection.html`, the "Group Duplicates" and "Show Only Trainers" toggles, along with the "Sorting Options" section, were wrapped in a new `div` with the class `controls-wrapper`. The toggles were placed in a `toggles-group` div, and the sorting options in a `sorting-group` div.
+    - **Frontend (CSS)**: In `webui/frontend/css/my_collection.css`, new CSS rules were added to style the `controls-wrapper` as a flex container with `justify-content: space-between` and `align-items: center`. This positions the two groups on the same line, at opposite ends. Additional styles were added for `toggles-group` and `sorting-group` to manage their internal layout.
+## 2025-07-26: Swap Positions of Rarity by Account and All Cards Tables
+
+- **Goal**: Swap the positions of the "Rarity by Account" table and the "All Cards" table in the dashboard UI to improve user experience.
+- **Implementation**:
+    - The tables are located in `webui/frontend/index.html` within the dashboard section.
+    - The visual layout is controlled by the HTML structure and CSS classes.
+    - The tables are rendered by JavaScript functions in `webui/frontend/js/dashboard.js`.
+    - No backend changes are required as this is purely a UI/layout change.
+- **Dependencies & Commands**:
+    - No new dependencies needed.
+    - Changes will be visible on next page load after implementation.
+    - Ensure to test on different screen sizes to confirm responsive behavior is maintained.

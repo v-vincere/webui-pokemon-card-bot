@@ -65,40 +65,23 @@
                             </div>
                         </div>
                     </div>
-                     <div class="row g-3 align-items-center mt-2">
-                        <div class="col-auto">
+                    <div class="controls-wrapper mt-2">
+                        <div class="toggles-group">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="group-duplicates">
                                 <label class="form-check-label" for="group-duplicates">Group Duplicates</label>
                             </div>
-                        </div>
-                        <div class="col-auto">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="trainer-filter">
                                 <label class="form-check-label" for="trainer-filter">Show Only Trainers</label>
                             </div>
                         </div>
-                    </div>
-                    <div class="row g-3 align-items-center mt-2">
-                        <div class="col-12">
-                            <h6>Sorting Options</h6>
-                            <div class="d-flex flex-wrap gap-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="sort-name-asc">
-                                    <label class="form-check-label" for="sort-name-asc">Name (A-Z)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="sort-name-desc">
-                                    <label class="form-check-label" for="sort-name-desc">Name (Z-A)</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="sort-rarity">
-                                    <label class="form-check-label" for="sort-rarity">By Rarity</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="sort-count">
-                                    <label class="form-check-label" for="sort-count">By Count</label>
-                                </div>
+                        <div class="sorting-group">
+                            <h6 class="mb-0">Sorting Options</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-outline-primary" id="sort-name-toggle">Name: A-Z</button>
+                                <button class="btn btn-outline-primary" id="sort-rarity-toggle">Rarity</button>
+                                <button class="btn btn-outline-primary" id="sort-count-toggle">By Count</button>
                             </div>
                         </div>
                     </div>
