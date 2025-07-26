@@ -1,10 +1,70 @@
-from fastapi import FastAPI, Depends, Query, HTTPException
+from fastapi import FastAPI, Depends, Query, HTTPException, Request, Response
 from app.dependencies import get_db_connection
 import sqlite3
 import pandas as pd
 import os
+from pydantic import BaseModel
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    """
+    On startup, connect to the database and create the 'identifications' table
+    if it doesn't already exist.
+    """
+    db_path = os.getenv("DATABASE_URL", os.path.join(os.path.dirname(__file__), "../../../data/pokemon_cards.db"))
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS identifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_name TEXT NOT NULL,
+            rarity TEXT NOT NULL,
+            deviceAccount TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# --- Password Protection ---
+ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "password123")
+SESSION_COOKIE_NAME = "pokemon_card_session"
+
+class LoginRequest(BaseModel):
+    password: str
+
+@app.post("/api/login")
+async def login(request: LoginRequest, response: Response):
+    if request.password == ACCESS_PASSWORD:
+        response.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value="authenticated",
+            httponly=True,
+            samesite="strict",
+            secure=True, # Set to True if using HTTPS
+        )
+        return {"message": "Login successful", "redirect": "/"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """
+    This middleware protects all API routes except for the login page.
+    It checks for a valid session cookie and returns a 401 response
+    if the cookie is not present.
+    """
+    public_paths = ["/api/login", "/docs", "/openapi.json", "/password.html", "/js/password.js", "/css/style.css"]
+    
+    if request.url.path in public_paths or not request.url.path.startswith("/api"):
+        return await call_next(request)
+
+    if SESSION_COOKIE_NAME not in request.cookies:
+        return Response("Unauthorized", status_code=401)
+
+    return await call_next(request)
 
 # --- Card Data Loading ---
 CARD_DATA_PATH = os.getenv("CARD_DATA_PATH", '/app/data/pokemon_tcg_pocket_cards.csv')
@@ -14,29 +74,32 @@ try:
     card_info_df['rarity_lower'] = card_info_df['rarity'].str.strip().str.lower()
     card_info_df['image_filename'] = card_info_df['image_filename'].str.strip()
     # Create a composite key (card_name, rarity) for the lookup
-    card_image_lookup = pd.Series(
-        card_info_df.image_filename.values,
-        index=[card_info_df.card_name_lower, card_info_df.rarity_lower]
-    ).to_dict()
+    card_info_df['category_lower'] = card_info_df['category'].str.strip().str.lower()
+    # Handle duplicates: some cards have the same name and rarity
+    card_info_df.drop_duplicates(subset=['card_name_lower', 'rarity_lower'], keep='first', inplace=True)
+    card_info_lookup = card_info_df.set_index(['card_name_lower', 'rarity_lower'])[['image_filename', 'set_name', 'category_lower']].to_dict('index')
 except FileNotFoundError:
     print(f"Warning: Card data file not found at {CARD_DATA_PATH}. Image URLs will not be available.")
-    card_image_lookup = {}
+    card_info_lookup = {}
 
 def setup_known_cards_temp_table(conn: sqlite3.Connection):
     """
     Creates and populates a temporary table with known card name/rarity pairs.
     This is used to efficiently filter queries to only include cards with images.
     """
-    if not card_image_lookup:
+    if not card_info_lookup:
         return
 
     cursor = conn.cursor()
-    cursor.execute("CREATE TEMP TABLE IF NOT EXISTS known_cards (name TEXT, rarity TEXT, PRIMARY KEY (name, rarity))")
+    cursor.execute("CREATE TEMP TABLE IF NOT EXISTS known_cards (name TEXT, rarity TEXT, set_name TEXT, category TEXT, PRIMARY KEY (name, rarity))")
     
     cursor.execute("SELECT COUNT(1) FROM known_cards")
     if cursor.fetchone()[0] == 0:
-        known_pairs = list(card_image_lookup.keys())
-        cursor.executemany("INSERT INTO known_cards (name, rarity) VALUES (?, ?)", known_pairs)
+        known_cards_data = [
+            (name, rarity, data['set_name'], data['category_lower'])
+            for (name, rarity), data in card_info_lookup.items()
+        ]
+        cursor.executemany("INSERT INTO known_cards (name, rarity, set_name, category) VALUES (?, ?, ?, ?)", known_cards_data)
         conn.commit()
 
 @app.get("/api/cards")
@@ -113,8 +176,11 @@ def get_all_cards(
             normalized_card_name = card_name.strip().lower().replace('_', '-')
             normalized_rarity = rarity.strip().lower()
             # Look up image with (name, rarity) composite key
-            image_filename = card_image_lookup.get((normalized_card_name, normalized_rarity))
-            card_dict['image_url'] = f'/card-images/{image_filename}' if image_filename else None
+            card_info = card_info_lookup.get((normalized_card_name, normalized_rarity))
+            if card_info:
+                card_dict['image_url'] = f'/card-images/{card_info["image_filename"]}' if card_info["image_filename"] else None
+            else:
+                card_dict['image_url'] = None
         else:
             card_dict['image_url'] = None
         cards_list.append(card_dict)
@@ -149,30 +215,18 @@ def get_rarity_counts(conn: sqlite3.Connection = Depends(get_db_connection)):
 def get_rarity_by_account(
     conn: sqlite3.Connection = Depends(get_db_connection),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100)
+    limit: int = Query(20, ge=1, le=100),
+    sort_by: str = Query("deviceAccount"),
+    sort_order: str = Query("asc")
 ):
     setup_known_cards_temp_table(conn)
     """
     Provides a paginated, pivoted table of rarity counts per device account.
     """
-    # Step 1: Get a paginated list of unique device accounts
     cursor = conn.cursor()
-    
-    count_query = "SELECT COUNT(DISTINCT deviceAccount) FROM identifications"
-    cursor.execute(count_query)
-    total_accounts = cursor.fetchone()[0]
-    
-    offset = (page - 1) * limit
-    accounts_query = "SELECT DISTINCT deviceAccount FROM identifications ORDER BY deviceAccount LIMIT ? OFFSET ?"
-    cursor.execute(accounts_query, (limit, offset))
-    paginated_accounts = [row[0] for row in cursor.fetchall()]
 
-    if not paginated_accounts:
-        return {"total_records": 0, "page": page, "limit": limit, "total_pages": 0, "data": {}}
-
-    # Step 2: Fetch rarity counts for only the paginated accounts
-    placeholders = ','.join('?' for _ in paginated_accounts)
-    query = f"""
+    # Get all rarity counts for all accounts
+    query = """
         SELECT
             COALESCE(i.deviceAccount, 'N/A') as deviceAccount,
             i.rarity,
@@ -181,36 +235,37 @@ def get_rarity_by_account(
             identifications i
         JOIN known_cards k ON REPLACE(LOWER(TRIM(i.card_name)), '_', '-') = k.name AND LOWER(TRIM(i.rarity)) = k.rarity
         WHERE
-            i.rarity IS NOT NULL AND i.deviceAccount IN ({placeholders})
+            i.rarity IS NOT NULL
         GROUP BY
             i.deviceAccount, i.rarity
     """
     try:
-        df = pd.read_sql_query(query, conn, params=paginated_accounts)
+        df = pd.read_sql_query(query, conn)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query failed: {e}")
 
-    if df.empty:
-        # This can happen if accounts have no cards with known rarities
-        empty_data = {acc: {} for acc in paginated_accounts}
-        return {
-            "total_records": total_accounts,
-            "page": page,
-            "limit": limit,
-            "total_pages": (total_accounts + limit - 1) // limit,
-            "data": empty_data
-        }
-
     # Pivot the table
     pivot_df = df.pivot(index='deviceAccount', columns='rarity', values='count').fillna(0).astype(int)
+
+    # Ensure all rarities are present as columns
+    all_rarities = ['Crown', 'Three Star', 'Two Star', 'One Star', 'Two Shiny', 'One Shiny', 'Four Diamond', 'Three Diamond', 'Two Diamond', 'One Diamond']
+    for rarity_col in all_rarities:
+        if rarity_col not in pivot_df.columns:
+            pivot_df[rarity_col] = 0
     
-    # Ensure all paginated accounts are in the result, even if they had no cards
-    for acc in paginated_accounts:
-        if acc not in pivot_df.index:
-            pivot_df.loc[acc] = 0
-            
+    # Sort the data
+    if sort_by in pivot_df.columns:
+        pivot_df.sort_values(by=sort_by, ascending=(sort_order == 'asc'), inplace=True)
+    else: # Default to sorting by account name
+        pivot_df.sort_index(ascending=(sort_order == 'asc'), inplace=True)
+
+    # Paginate the results
+    total_accounts = len(pivot_df)
+    offset = (page - 1) * limit
+    paginated_df = pivot_df.iloc[offset:offset + limit]
+
     # Convert to the desired JSON format
-    result = pivot_df.to_dict(orient='index')
+    result = paginated_df.to_dict(orient='index')
     
     return {
         "total_records": total_accounts,
@@ -219,6 +274,64 @@ def get_rarity_by_account(
         "total_pages": (total_accounts + limit - 1) // limit,
         "data": result
     }
+@app.get("/api/cards-by-account-rarity")
+def get_cards_by_account_rarity(
+    account: str,
+    rarity: str,
+    conn: sqlite3.Connection = Depends(get_db_connection)
+):
+    """
+    Fetches all cards for a specific account and rarity.
+    """
+    setup_known_cards_temp_table(conn)
+    cursor = conn.cursor()
+
+    query = """
+        SELECT i.card_name, i.rarity
+        FROM identifications i
+        JOIN known_cards k ON REPLACE(LOWER(TRIM(i.card_name)), '_', '-') = k.name AND LOWER(TRIM(i.rarity)) = k.rarity
+        WHERE i.deviceAccount = ? AND i.rarity = ?
+        ORDER BY i.card_name
+    """
+    
+    try:
+        cursor.execute(query, (account, rarity))
+        cards_data = cursor.fetchall()
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+
+    cards_list = []
+    for card in cards_data:
+        card_dict = dict(card)
+        card_name = card_dict.get('card_name')
+        card_rarity = card_dict.get('rarity')
+        
+        if card_name and card_rarity:
+            normalized_card_name = card_name.strip().lower().replace('_', '-')
+            normalized_rarity = card_rarity.strip().lower()
+            card_info = card_info_lookup.get((normalized_card_name, normalized_rarity))
+            if card_info:
+                card_dict['image_url'] = f'/card-images/{card_info["image_filename"]}' if card_info["image_filename"] else None
+            else:
+                card_dict['image_url'] = None
+        else:
+            card_dict['image_url'] = None
+            
+        cards_list.append(card_dict)
+
+    return cards_list
+
+@app.get("/api/expansions")
+def get_expansions():
+    """
+    Returns a list of unique expansion set names.
+    """
+    if 'set_name' in card_info_df.columns:
+        expansions = card_info_df['set_name'].unique().tolist()
+        filtered_expansions = [exp for exp in expansions if exp != 'Promos-A']
+        return sorted(filtered_expansions)
+    return []
+
 
 @app.get("/api/my-collection")
 def get_my_collection(
@@ -227,7 +340,9 @@ def get_my_collection(
     limit: int = Query(200, ge=1, le=1000),
     group: bool = Query(False),
     q: str = Query(None, alias="search"),
-    rarity: str = Query(None)
+    rarity: str = Query(None),
+    expansion: str = Query(None),
+    trainer: bool = Query(False)
 ):
     setup_known_cards_temp_table(conn)
     cursor = conn.cursor()
@@ -246,6 +361,16 @@ def get_my_collection(
             placeholders = ','.join('?' for _ in rarity_list)
             conditions.append(f"i.rarity IN ({placeholders})")
             params.extend(rarity_list)
+    
+    if expansion:
+        expansion_list = [e.strip() for e in expansion.split(',') if e.strip()]
+        if expansion_list:
+            placeholders = ','.join('?' for _ in expansion_list)
+            conditions.append(f"k.set_name IN ({placeholders})")
+            params.extend(expansion_list)
+
+    if trainer:
+        conditions.append("k.category = 'trainer'")
 
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
 
@@ -277,8 +402,11 @@ def get_my_collection(
         if card_name and rarity:
             normalized_card_name = card_name.strip().lower().replace('_', '-')
             normalized_rarity = rarity.strip().lower()
-            image_filename = card_image_lookup.get((normalized_card_name, normalized_rarity))
-            card_dict['image_url'] = f'/card-images/{image_filename}' if image_filename else None
+            card_info = card_info_lookup.get((normalized_card_name, normalized_rarity))
+            if card_info:
+                card_dict['image_url'] = f'/card-images/{card_info["image_filename"]}' if card_info["image_filename"] else None
+            else:
+                card_dict['image_url'] = None
         else:
             card_dict['image_url'] = None
             

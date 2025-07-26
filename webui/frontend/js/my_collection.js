@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchBar = document.getElementById('search-bar');
     const groupDuplicatesCheckbox = document.getElementById('group-duplicates');
     const rarityFilter = document.getElementById('rarity-filter');
+    const expansionFilter = document.getElementById('expansion-filter');
+    const trainerFilter = document.getElementById('trainer-filter');
     const darkModeToggle = document.getElementById('darkModeToggle');
 
     let page = 1;
@@ -26,7 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const group = groupDuplicatesCheckbox.checked;
             const query = searchBar.value;
             const selectedRarities = getSelectedRarities();
-            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}`);
+            const selectedExpansions = getSelectedExpansions();
+            const showTrainers = trainerFilter.checked;
+            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -54,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const img = document.createElement('img');
             img.src = card.image_url || 'images/card_back.png'; // Fallback image
-            img.alt = card.name;
+            img.alt = card.card_name;
             cardElement.appendChild(img);
 
             if (groupDuplicatesCheckbox.checked && card.count > 1) {
@@ -84,9 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchCards(true);
         }, 500);
     });
+    trainerFilter.addEventListener('change', () => fetchCards(true));
 
     function getSelectedRarities() {
         return Array.from(rarityFilter.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    }
+
+    function getSelectedExpansions() {
+        return Array.from(expansionFilter.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
     }
 
     function getRarityIcon(rarity) {
@@ -139,6 +148,26 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to populate rarity filters:', error);
         }
     }
+
+    async function populateExpansionFilters() {
+        try {
+            const response = await fetch('/api/expansions');
+            const expansions = await response.json();
+
+            expansionFilter.innerHTML = expansions.map(expansion => {
+                const expansionId = expansion.replace(/\s+/g, '-').toLowerCase();
+                return `
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="expansion-${expansionId}" value="${expansion}">
+                    <label class="form-check-label" for="expansion-${expansionId}">${expansion}</label>
+                </div>
+            `}).join('');
+
+            expansionFilter.addEventListener('change', () => fetchCards(true));
+        } catch (error) {
+            console.error('Failed to populate expansion filters:', error);
+        }
+    }
     
     function setupDarkMode() {
         darkModeToggle.addEventListener('change', () => {
@@ -154,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     groupDuplicatesCheckbox.checked = true;
     setupDarkMode();
     populateRarityFilters();
+    populateExpansionFilters();
     fetchCards();
 });
     // --- Sidebar Toggle ---

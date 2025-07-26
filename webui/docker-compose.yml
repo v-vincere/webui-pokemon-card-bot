@@ -1,6 +1,6 @@
 services:
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.10.0
     restart: unless-stopped
     ports:
       - "80:80"
@@ -16,9 +16,11 @@ services:
     build: ./backend
     volumes:
       - /home/ubuntu/pokemon-card-bot/data:/app/data
+      - ./backend/app:/code/app
     environment:
       - DATABASE_URL=/app/data/pokemon_cards.db
       - CARD_DATA_PATH=/app/data/pokemon_tcg_pocket_cards.csv
+      - ACCESS_PASSWORD=pokemon123!!
 
   frontend:
     build: ./frontend

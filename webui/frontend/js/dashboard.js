@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const rowsPerPageSelect = document.getElementById('rows-per-page');
     const rarityRowsPerPageSelect = document.getElementById('rarity-rows-per-page');
     const rarityPaginationControls = document.getElementById('rarity-pagination-controls');
-    const tableHeader = document.querySelector('thead');
+    const allCardsTableHead = document.querySelector('#cards-table-body').previousElementSibling;
 
     // --- State Management ---
     let rarityPieChart;
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let limit = 100;
     let rarityCurrentPage = 1;
     let rarityLimit = 20;
+    let raritySort = { by: 'deviceAccount', order: 'asc' };
     let currentSort = {
         by: 'timestamp',
         order: 'desc'
@@ -45,6 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             const response = await fetch(url);
+            if (response.status === 401) {
+                window.location.href = '/password.html';
+                return;
+            }
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
@@ -62,6 +67,10 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchRarityCounts() {
         try {
             const response = await fetch('/api/rarity-counts');
+            if (response.status === 401) {
+                window.location.href = '/password.html';
+                return;
+            }
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const rarityData = await response.json();
             populateRarityFilter(rarityData);
@@ -75,8 +84,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchRarityByAccount() {
         try {
-            const url = `/api/rarity-by-account?page=${rarityCurrentPage}&limit=${rarityLimit}`;
+            const sort_by = raritySort.by || 'deviceAccount';
+            const sort_order = raritySort.order || 'asc';
+            const url = `/api/rarity-by-account?page=${rarityCurrentPage}&limit=${rarityLimit}&sort_by=${sort_by}&sort_order=${sort_order}`;
             const response = await fetch(url);
+            if (response.status === 401) {
+                window.location.href = '/password.html';
+                return;
+            }
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             renderRarityByAccountTable(data.data);
@@ -264,37 +279,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderRarityByAccountTable(data) {
         const tableData = data;
-        if (Object.keys(tableData).length === 0) {
-            rarityByAccountTableHead.innerHTML = '<tr><th>No data available</th></tr>';
-            rarityByAccountTableBody.innerHTML = '';
-            return;
-        }
-
-        // Collect all unique rarities for the header
-        const allRarities = new Set();
-        Object.values(tableData).forEach(rarities => {
-            Object.keys(rarities).forEach(r => allRarities.add(r));
-        });
-        const sortedRarities = Array.from(allRarities).sort();
+        const raritiesForHeader = [
+            'Crown', 'Three Star', 'Two Star', 'One Star',
+            'Two Shiny', 'One Shiny',
+            'Four Diamond', 'Three Diamond', 'Two Diamond', 'One Diamond'
+        ];
 
         // Create header
-        let headerHtml = '<tr><th>Device Account</th>';
-        sortedRarities.forEach(rarity => {
-            headerHtml += `<th>${getRarityIcon(rarity)}</th>`;
+        let headerHtml = '<tr><th class="sortable" data-sort="deviceAccount">Device Account <i class="bi bi-arrow-down-up"></i></th>';
+        raritiesForHeader.forEach(rarity => {
+            headerHtml += `<th class="sortable" data-sort="${rarity}">${getRarityIcon(rarity)} <i class="bi bi-arrow-down-up"></i></th>`;
         });
         headerHtml += '</tr>';
         rarityByAccountTableHead.innerHTML = headerHtml;
+
+        if (Object.keys(tableData).length === 0) {
+            rarityByAccountTableBody.innerHTML = '<tr><td colspan="11" class="text-center">No data available</td></tr>';
+            return;
+        }
 
         // Create body
         let bodyHtml = '';
         for (const account in tableData) {
             bodyHtml += `<tr><td>${account}</td>`;
-            sortedRarities.forEach(rarity => {
-                bodyHtml += `<td>${tableData[account][rarity] || 0}</td>`;
+            raritiesForHeader.forEach(rarity => {
+                const count = tableData[account] && tableData[account][rarity] ? tableData[account][rarity] : 0;
+                const cellClass = count > 0 ? 'has-cards' : '';
+                bodyHtml += `<td class="${cellClass}" data-account="${account}" data-rarity="${rarity}">${count}</td>`;
             });
             bodyHtml += '</tr>';
         }
         rarityByAccountTableBody.innerHTML = bodyHtml;
+        updateRaritySortUI();
     }
 
     function renderPagination(data) {
@@ -382,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    tableHeader.addEventListener('click', e => {
+    allCardsTableHead.addEventListener('click', e => {
         const header = e.target.closest('.sortable');
         if (!header) return;
 
@@ -401,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function updateSortUI() {
-        document.querySelectorAll('.sortable').forEach(th => {
+        allCardsTableHead.querySelectorAll('.sortable').forEach(th => {
             const icon = th.querySelector('.bi');
             th.classList.remove('asc', 'desc');
             if (th.dataset.sort === currentSort.by) {
@@ -412,6 +428,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    function updateRaritySortUI() {
+        document.querySelectorAll('#rarity-by-account-table-head .sortable').forEach(th => {
+            const icon = th.querySelector('.bi');
+            if (!icon) return;
+            th.classList.remove('asc', 'desc');
+            if (th.dataset.sort === raritySort.by) {
+                th.classList.add(raritySort.order);
+                icon.className = `bi bi-arrow-${raritySort.order === 'asc' ? 'up' : 'down'}`;
+            } else {
+                icon.className = 'bi bi-arrow-down-up';
+            }
+        });
+    }
+
+    rarityByAccountTableHead.addEventListener('click', e => {
+        const header = e.target.closest('.sortable');
+        if (!header) return;
+
+        const newSortBy = header.dataset.sort;
+        
+        if (newSortBy === raritySort.by) {
+            raritySort.order = raritySort.order === 'asc' ? 'desc' : 'asc';
+        } else {
+            raritySort.by = newSortBy;
+            raritySort.order = 'desc';
+        }
+        
+        rarityCurrentPage = 1;
+        fetchRarityByAccount();
+    });
 
     paginationControls.addEventListener('click', e => {
         e.preventDefault();
@@ -451,6 +498,102 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    const cardDetailsModal = document.getElementById('card-details-modal');
+    const cardDetailsContent = document.getElementById('card-details-content');
+    let modalHideTimeout;
+
+    rarityByAccountTableBody.addEventListener('mouseover', async (e) => {
+        if (window.innerWidth < 992) return; // Disable on smaller screens
+
+        if (e.target.matches('td.has-cards')) {
+            if (modalHideTimeout) {
+                clearTimeout(modalHideTimeout);
+            }
+            const cell = e.target;
+            const account = cell.dataset.account;
+            const rarity = cell.dataset.rarity;
+
+            cardDetailsContent.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            cardDetailsModal.style.display = 'block'; // Show modal first to calculate size
+
+            try {
+                const response = await fetch(`/api/cards-by-account-rarity?account=${encodeURIComponent(account)}&rarity=${encodeURIComponent(rarity)}`);
+                if (!response.ok) throw new Error('Failed to fetch card details');
+                
+                const cards = await response.json();
+                
+                if (cards.length > 0) {
+                    cardDetailsContent.innerHTML = `
+                        <div class="card-details-grid">
+                            ${cards.map(card => `
+                                <div class="card-detail-item text-center">
+                                    <img src="${card.image_url}" alt="${card.card_name}" class="img-fluid">
+                                    <p class="mb-0">${card.card_name}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    cardDetailsContent.innerHTML = '<p class="text-center">No cards found.</p>';
+                }
+
+                // Now position the modal correctly
+                const rect = cell.getBoundingClientRect();
+                const modalWidth = cardDetailsModal.offsetWidth;
+                const modalHeight = cardDetailsModal.offsetHeight;
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                let left = rect.left + window.scrollX;
+                let top = rect.bottom + window.scrollY + 5;
+
+                // Adjust horizontal position
+                if (left + modalWidth > viewportWidth + window.scrollX) {
+                    left = rect.right + window.scrollX - modalWidth;
+                }
+
+                // Adjust vertical position
+                if (top + modalHeight > viewportHeight + window.scrollY) {
+                    top = rect.top + window.scrollY - modalHeight - 5;
+                }
+                
+                // Ensure it doesn't go off the left or top of the screen
+                if (left < window.scrollX) {
+                    left = window.scrollX + 5;
+                }
+                if (top < window.scrollY) {
+                    top = window.scrollY + 5;
+                }
+
+                cardDetailsModal.style.left = `${left}px`;
+                cardDetailsModal.style.top = `${top}px`;
+            } catch (error) {
+                console.error('Error fetching card details:', error);
+                cardDetailsContent.innerHTML = '<p class="text-center text-danger">Error loading details.</p>';
+            }
+        }
+    });
+
+    function hideModal() {
+        modalHideTimeout = setTimeout(() => {
+            cardDetailsModal.style.display = 'none';
+        }, 1000); // A slightly longer delay
+    }
+
+    rarityByAccountTableBody.addEventListener('mouseout', (e) => {
+        if (e.target.matches('td.has-cards')) {
+            hideModal();
+        }
+    });
+
+    cardDetailsModal.addEventListener('mouseenter', () => {
+        clearTimeout(modalHideTimeout);
+    });
+
+    cardDetailsModal.addEventListener('mouseleave', () => {
+        hideModal();
+    });
+
     // --- Initial Load ---
     function initializeDashboard() {
         fetchRarityCounts().then(() => {
@@ -458,6 +601,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         fetchRarityByAccount();
         updateSortUI();
+        updateRaritySortUI();
     }
 
     initializeDashboard();

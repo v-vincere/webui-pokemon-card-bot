@@ -1,0 +1,23 @@
+.has-cards {
+    cursor: pointer;
+    background-color: #e9f5ff;
+}
+
+[data-bs-theme="dark"] .has-cards {
+    background-color: #3a3a3a;
+}
+
+.card-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+#card-details-modal {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    width: 440px;
+    max-height: 440px;
+    overflow-y: auto;
+}

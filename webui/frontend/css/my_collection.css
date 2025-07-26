@@ -59,3 +59,10 @@
 #rarity-filter .form-check {
     flex-shrink: 0;
 }
+
+#expansion-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
