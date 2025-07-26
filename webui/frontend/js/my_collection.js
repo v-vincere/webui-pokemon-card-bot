@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const expansionFilter = document.getElementById('expansion-filter');
     const trainerFilter = document.getElementById('trainer-filter');
     const darkModeToggle = document.getElementById('darkModeToggle');
+    // Sorting checkboxes
+    const sortNameAsc = document.getElementById('sort-name-asc');
+    const sortNameDesc = document.getElementById('sort-name-desc');
+    const sortRarity = document.getElementById('sort-rarity');
+    const sortCount = document.getElementById('sort-count');
 
     let page = 1;
     const limit = 200;
@@ -30,7 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedRarities = getSelectedRarities();
             const selectedExpansions = getSelectedExpansions();
             const showTrainers = trainerFilter.checked;
-            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}`);
+            const sortNameAscChecked = sortNameAsc ? sortNameAsc.checked : false;
+            const sortNameDescChecked = sortNameDesc ? sortNameDesc.checked : false;
+            const sortRarityChecked = sortRarity ? sortRarity.checked : false;
+            const sortCountChecked = sortCount ? sortCount.checked : false;
+            const response = await fetch(`/api/my-collection?page=${page}&limit=${limit}&group=${group}&search=${query}&rarity=${selectedRarities.join(',')}&expansion=${selectedExpansions.join(',')}&trainer=${showTrainers}&sort_name_asc=${sortNameAscChecked}&sort_name_desc=${sortNameDescChecked}&sort_rarity=${sortRarityChecked}&sort_count=${sortCountChecked}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -80,7 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners
     window.addEventListener('scroll', handleInfiniteScroll);
-    groupDuplicatesCheckbox.addEventListener('change', () => fetchCards(true));
+    groupDuplicatesCheckbox.addEventListener('change', () => {
+        // Update sort options based on group duplicates setting
+        updateSortOptions();
+        fetchCards(true);
+    });
     searchBar.addEventListener('input', () => {
         // Debounce search input to avoid excessive API calls
         clearTimeout(searchBar.timer);
@@ -89,6 +102,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     });
     trainerFilter.addEventListener('change', () => fetchCards(true));
+    
+    // Add event listeners for sorting checkboxes
+    if (sortNameAsc) sortNameAsc.addEventListener('change', () => fetchCards(true));
+    if (sortNameDesc) sortNameDesc.addEventListener('change', () => fetchCards(true));
+    if (sortRarity) sortRarity.addEventListener('change', () => fetchCards(true));
+    if (sortCount) sortCount.addEventListener('change', () => fetchCards(true));
+    
+    // Update sort count checkbox based on group duplicates setting
+    function updateSortCountOption() {
+        if (sortCount) {
+            sortCount.disabled = !groupDuplicatesCheckbox.checked;
+            if (!groupDuplicatesCheckbox.checked) {
+                sortCount.checked = false;
+            }
+        }
+    }
+    
+    // Add event listener to group duplicates checkbox to update sort count option
+    groupDuplicatesCheckbox.addEventListener('change', () => {
+        updateSortCountOption();
+        fetchCards(true);
+    });
 
     function getSelectedRarities() {
         return Array.from(rarityFilter.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
@@ -184,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDarkMode();
     populateRarityFilters();
     populateExpansionFilters();
+    updateSortCountOption();
     fetchCards();
 });
     // --- Sidebar Toggle ---

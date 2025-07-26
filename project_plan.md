@@ -217,3 +217,20 @@ The website is not responsive and does not display correctly on mobile devices. 
 - **Implementation**:
     - Modified the `mouseover` and `mouseout` event listeners for the modal and the table cells in `webui/frontend/js/dashboard.js`.
     - The modal will now remain open as long as the user's mouse is over either the table cell that triggered it or the modal itself. A short delay is used before hiding the modal to allow for seamless movement between the cell and the modal.
+
+## 2025-07-26: Add Sorting to My Collection Page
+
+- **Goal**: Add sorting functionality to the "My Collection" page to allow users to sort their cards.
+- **Requirements**:
+    - Add alphabetical sorting (A-Z and Z-A) for card names.
+    - Add card count sorting (high to low) when grouping duplicates is enabled.
+    - Add rarity sorting option.
+    - Make sorting options independent so users can toggle any combination.
+- **Implementation**:
+    - **Backend**: Updated the `/api/my-collection` endpoint in `webui/backend/app/main.py` to accept multiple independent sorting parameters (`sort_name_asc`, `sort_name_desc`, `sort_rarity`, `sort_count`).
+    - **Frontend (HTML)**: Replaced the dropdown select element with independent toggle switches for each sorting option in `webui/frontend/my_collection.html`.
+    - **Frontend (JavaScript)**: 
+        - In `webui/frontend/js/my_collection.js`, added event listeners for each sorting checkbox.
+        - Implemented logic to enable/disable the count sorting option based on whether grouping duplicates is enabled.
+        - Updated the API calls to include all selected sorting parameters.
+        - The sorting options are now independent, allowing users to combine multiple sorting criteria.

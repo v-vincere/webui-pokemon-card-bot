@@ -342,7 +342,11 @@ def get_my_collection(
     q: str = Query(None, alias="search"),
     rarity: str = Query(None),
     expansion: str = Query(None),
-    trainer: bool = Query(False)
+    trainer: bool = Query(False),
+    sort_name_asc: bool = Query(False),
+    sort_name_desc: bool = Query(False),
+    sort_rarity: bool = Query(False),
+    sort_count: bool = Query(False)
 ):
     setup_known_cards_temp_table(conn)
     cursor = conn.cursor()
@@ -374,14 +378,40 @@ def get_my_collection(
 
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
 
+    # Build order clause based on multiple sorting options
+    order_parts = []
+    
+    # Add name ascending sort
+    if sort_name_asc:
+        order_parts.append("i.card_name ASC")
+    
+    # Add name descending sort
+    if sort_name_desc:
+        order_parts.append("i.card_name DESC")
+        
+    # Add rarity sort
+    if sort_rarity:
+        order_parts.append("i.rarity")
+        
+    # Add count sort (only when grouping)
+    if sort_count and group:
+        order_parts.append("count DESC")
+    
+    # Default sorting if no options selected
+    if not order_parts:
+        if group:
+            order_parts.append("i.card_name ASC, i.rarity")
+        else:
+            order_parts.append("i.timestamp DESC")
+    
+    order_clause = "ORDER BY " + ", ".join(order_parts)
+
     if group:
         select_clause = "SELECT i.card_name, i.rarity, COUNT(*) as count"
-        order_clause = "ORDER BY i.card_name, i.rarity"
         group_clause = "GROUP BY i.card_name, i.rarity"
         query = f"{select_clause} {base_query} {where_clause} {group_clause} {order_clause} LIMIT ? OFFSET ?"
     else:
         select_clause = "SELECT i.card_name, i.rarity"
-        order_clause = "ORDER BY i.timestamp DESC"
         query = f"{select_clause} {base_query} {where_clause} {order_clause} LIMIT ? OFFSET ?"
 
     offset = (page - 1) * limit
