@@ -68,3 +68,8 @@ The website is not responsive and does not display correctly on mobile devices. 
 - Fixed a JavaScript error in `dashboard.js` that was causing a crash when rendering the pagination for the "All Cards" table.
 - **2025-07-25: Reverted Pagination Logic**
 - Reverted the pagination logic in `dashboard.js` to a working state to fix the crash.
+
+## 2025-07-25: Add Rarity Distribution Table
+
+- Updated `webui/frontend/index.html` to add a container for the rarity distribution table.
+- Updated `webui/frontend/js/dashboard.js` to render a table with rarity counts and percentages.

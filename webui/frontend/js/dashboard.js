@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageTooltip = document.getElementById('image-tooltip');
     const rarityPieChartLegend = document.getElementById('rarity-pie-chart-legend');
     const summaryStatsContainer = document.getElementById('summary-stats');
+    const rarityTableContainer = document.getElementById('rarity-table-container');
     const rarityByAccountTableHead = document.getElementById('rarity-by-account-table-head');
     const rarityByAccountTableBody = document.getElementById('rarity-by-account-table-body');
     const paginationControls = document.getElementById('pagination-controls');
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
             populateRarityFilter(rarityData);
             renderRarityPieChart(rarityData);
             renderSummaryStats(rarityData);
+            renderRarityTable(rarityData);
         } catch (error) {
             console.error("Failed to fetch rarity counts:", error);
         }
@@ -195,6 +197,43 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         summaryStatsContainer.appendChild(createStatCard('Total Cards', totalCards));
         rarityData.forEach(item => summaryStatsContainer.appendChild(createStatCard(item.rarity, item.count)));
+    }
+
+    function renderRarityTable(rarityData) {
+        const totalCards = rarityData.reduce((sum, item) => sum + item.count, 0);
+        let tableHtml = `
+            <div class="card">
+                <div class="card-header">
+                    Rarity Distribution
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Rarity</th>
+                                <th>Count</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        rarityData.forEach(item => {
+            const percentage = totalCards > 0 ? ((item.count / totalCards) * 100).toFixed(2) : 0;
+            tableHtml += `
+                <tr>
+                    <td>${getRarityIcon(item.rarity)}</td>
+                    <td>${item.count}</td>
+                    <td>${percentage}%</td>
+                </tr>
+            `;
+        });
+        tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        rarityTableContainer.innerHTML = tableHtml;
     }
 
     function populateRarityFilter(data) {
